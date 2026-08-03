@@ -1,6 +1,6 @@
 import Foundation
 
-enum TransportState: String, Sendable {
+enum TransportState: String, Sendable, Codable {
     case playing, paused, stopped, transitioning
 
     init(upnp: String) {
@@ -13,7 +13,7 @@ enum TransportState: String, Sendable {
     }
 }
 
-struct SonosSpeaker: Identifiable, Hashable, Sendable {
+struct SonosSpeaker: Identifiable, Hashable, Sendable, Codable {
     let uuid: String        // RINCON_xxxxxxxxxxxx01400
     let name: String        // zone name, e.g. "Living Room"
     let ip: String
@@ -23,7 +23,7 @@ struct SonosSpeaker: Identifiable, Hashable, Sendable {
     var id: String { uuid }
 }
 
-struct SonosGroup: Identifiable, Hashable, Sendable {
+struct SonosGroup: Identifiable, Hashable, Sendable, Codable {
     let id: String          // group ID, e.g. RINCON_xxx:123
     let coordinatorUUID: String
     var members: [SonosSpeaker]   // coordinator first

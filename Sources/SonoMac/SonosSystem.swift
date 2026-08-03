@@ -63,7 +63,27 @@ final class SonosSystem {
     @ObservationIgnored var masterStart: Double = 0
 
     init() {
+        restoreState()
         Task { await initialLoad() }
+    }
+
+    /// Last-known rooms and state, so the panel renders fully populated the
+    /// instant it opens — even right after login — instead of flashing the
+    /// scanning layout and then popping content in. Live values glide in
+    /// on top once the speakers answer.
+    private func restoreState() {
+        guard let data = UserDefaults.standard.data(forKey: "lastGroups"),
+              let saved = try? JSONDecoder().decode([SonosGroup].self, from: data),
+              !saved.isEmpty
+        else { return }
+        groups = saved
+        syncMaster()
+    }
+
+    private func persistState() {
+        guard !groups.isEmpty,
+              let data = try? JSONEncoder().encode(groups) else { return }
+        UserDefaults.standard.set(data, forKey: "lastGroups")
     }
 
     // MARK: - Menu lifecycle
@@ -92,6 +112,7 @@ final class SonosSystem {
         menuIsOpen = false
         pollTask?.cancel()
         pollTask = nil
+        persistState()
     }
 
     // MARK: - Discovery / topology
@@ -164,6 +185,7 @@ final class SonosSystem {
         }
         let ips = Array(Set(groups.flatMap { $0.members.map(\.ip) })).sorted()
         if !ips.isEmpty { knownIPs = ips }
+        persistState()
     }
 
     // MARK: - State refresh
