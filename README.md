@@ -36,6 +36,7 @@ When macOS asks for **Local Network** access, click **Allow** — that's how Son
 
 - 🎚️ **Master volume** — one slider moves every room proportionally; click the speaker glyph to mute everything
 - 🔊 **Per-room & per-speaker volume** — Control-Center-style capsule sliders, mute on the glyph
+- 🖱️ **Swipe to adjust** — scroll horizontally on any volume bar for smooth, damped changes that can't accidentally jump the level
 - ⚖️ **Even Out Volumes** — one click sets every speaker in a group to the group average (70/60/50 → 60/60/60)
 - ⏯️ **Playback** — play, pause, previous, next, with a now-playing line per room
 - 📺 **TV Audio** — switch home-theater speakers (Arc, Beam, Ray, Playbar/Playbase, Amp) to TV input and back

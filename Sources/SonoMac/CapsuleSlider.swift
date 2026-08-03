@@ -13,6 +13,8 @@ struct CapsuleSlider: View {
     @State private var isDragging = false
     @State private var startedOnIcon = false
     @State private var moved = false
+    @State private var scrollAccum: CGFloat = 0
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         GeometryReader { geo in
@@ -34,6 +36,10 @@ struct CapsuleSlider: View {
                 }
             }
             .contentShape(Rectangle())
+            // Scroll steps and receiver pushes glide to the new level;
+            // finger drags track 1:1 with no animation lag.
+            .animation(isDragging ? nil : .smooth(duration: 0.25), value: value)
+            .background(ScrollCatcher { dx in handleScroll(dx) })
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { g in
@@ -61,5 +67,67 @@ struct CapsuleSlider: View {
             )
         }
         .frame(height: height)
+    }
+
+    /// Relative, heavily damped scroll: ~12 points of finger travel per
+    /// volume unit, so a swipe nudges the level and can never jump it.
+    private func handleScroll(_ dx: CGFloat) {
+        guard isEnabled else { return }
+        scrollAccum += dx
+        let damp: CGFloat = 12
+        let steps = Int(scrollAccum / damp)
+        guard steps != 0 else { return }
+        scrollAccum -= CGFloat(steps) * damp
+        onEditingChanged(true)
+        value = min(100, max(0, value + Double(steps)))
+        onEditingChanged(false)
+    }
+}
+
+/// Invisible, click-through view that reports horizontal scroll deltas
+/// occurring over its bounds. Clicks and drags pass straight through.
+private struct ScrollCatcher: NSViewRepresentable {
+    var onScroll: (CGFloat) -> Void
+
+    func makeNSView(context: Context) -> CatcherView {
+        let v = CatcherView()
+        v.onScroll = onScroll
+        return v
+    }
+
+    func updateNSView(_ nsView: CatcherView, context: Context) {
+        nsView.onScroll = onScroll
+    }
+
+    final class CatcherView: NSView {
+        var onScroll: ((CGFloat) -> Void)?
+        private var monitor: Any?
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if window != nil, monitor == nil {
+                monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+                    guard let self, let window = self.window, event.window === window else {
+                        return event
+                    }
+                    let p = self.convert(event.locationInWindow, from: nil)
+                    guard self.bounds.contains(p) else { return event }
+                    let dx = event.hasPreciseScrollingDeltas
+                        ? event.scrollingDeltaX
+                        : event.scrollingDeltaX * 6
+                    self.onScroll?(dx)
+                    return nil
+                }
+            } else if window == nil, let m = monitor {
+                NSEvent.removeMonitor(m)
+                monitor = nil
+            }
+        }
+
+        deinit {
+            if let m = monitor { NSEvent.removeMonitor(m) }
+        }
     }
 }
