@@ -8,7 +8,7 @@
 
 A tiny native menu bar app for your Sonos system — volume, grouping, playback and TV audio, styled like Control Center. No cloud, no account, no Electron. One 740 KB binary.
 
-[![Latest release](https://img.shields.io/github/v/release/SistemasKitMachinery/SonoMac?label=Download&color=blue)](https://github.com/SistemasKitMachinery/SonoMac/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/inakizamores/SonoMac?label=Download&color=blue)](https://github.com/inakizamores/SonoMac/releases/latest)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black)](#requirements)
 [![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-native-black)](#requirements)
 [![Swift](https://img.shields.io/badge/Swift-SwiftUI-orange)](Sources/SonoMac)
@@ -20,14 +20,14 @@ A tiny native menu bar app for your Sonos system — volume, grouping, playback 
 
 ## Install
 
-**[⬇ Download SonoMac.dmg](https://github.com/SistemasKitMachinery/SonoMac/releases/latest/download/SonoMac.dmg)** — open it, drag SonoMac into Applications, launch it.
+**[⬇ Download SonoMac.dmg](https://github.com/inakizamores/SonoMac/releases/latest/download/SonoMac.dmg)** — open it, drag SonoMac into Applications, launch it.
 
 > **First launch:** SonoMac is open source and not notarized by Apple (no paid developer account), so macOS will show *"Apple could not verify SonoMac"*. Open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** — needed exactly once.
 
 Prefer to skip that dialog? This one-liner downloads, installs and launches it directly:
 
 ```bash
-curl -fsSL -o /tmp/SonoMac.zip https://github.com/SistemasKitMachinery/SonoMac/releases/latest/download/SonoMac.zip && ditto -xk /tmp/SonoMac.zip /Applications && xattr -dr com.apple.quarantine /Applications/SonoMac.app && open /Applications/SonoMac.app
+curl -fsSL -o /tmp/SonoMac.zip https://github.com/inakizamores/SonoMac/releases/latest/download/SonoMac.zip && ditto -xk /tmp/SonoMac.zip /Applications && xattr -dr com.apple.quarantine /Applications/SonoMac.app && open /Applications/SonoMac.app
 ```
 
 When macOS asks for **Local Network** access, click **Allow** — that's how SonoMac finds your speakers. That's the entire setup.
@@ -61,7 +61,7 @@ SonoMac is built to disappear into macOS:
 Only Xcode Command Line Tools needed (`xcode-select --install`):
 
 ```bash
-git clone https://github.com/SistemasKitMachinery/SonoMac.git
+git clone https://github.com/inakizamores/SonoMac.git
 cd SonoMac
 ./build.sh --install
 ```
