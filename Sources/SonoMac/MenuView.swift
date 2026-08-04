@@ -34,7 +34,7 @@ struct MenuView: View {
     private var header: some View {
         HStack {
             Text("Sonos")
-                .font(.system(.body, weight: .bold))
+                .font(.system(.body, weight: .semibold))
             Spacer()
             settingsMenu
         }
