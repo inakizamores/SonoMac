@@ -61,6 +61,9 @@ final class SonosSystem {
     @ObservationIgnored private var throttlers: [String: Throttler] = [:]
     @ObservationIgnored var masterBase: [String: Int]?
     @ObservationIgnored var masterStart: Double = 0
+    // Frozen volume ratios captured at drag start (mirrors the device's
+    // SnapshotGroupVolume) so member levels never drift from rounding.
+    @ObservationIgnored var groupDragBase: [String: (group: Int, members: [String: Int])] = [:]
 
     init() {
         restoreState()

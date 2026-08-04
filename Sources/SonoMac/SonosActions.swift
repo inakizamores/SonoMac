@@ -7,10 +7,45 @@ extension SonosSystem {
 
     // MARK: Volume
 
+    /// Snapshot ratios at drag start — on the device (SnapshotGroupVolume,
+    /// so its distribution math never compounds rounding) and locally (so
+    /// member bars track the group slider in real time, staying even if
+    /// they started even).
+    func groupEditing(_ id: String, _ editing: Bool) {
+        if editing {
+            guard groupDragBase[id] == nil,
+                  let g = groups.first(where: { $0.id == id }) else { return }
+            groupDragBase[id] = (g.volume,
+                                 Dictionary(uniqueKeysWithValues: g.members.map { ($0.uuid, $0.volume) }))
+            let ip = g.coordinator.ip
+            Task {
+                _ = try? await SOAP.call(.groupRenderingControl, action: "SnapshotGroupVolume",
+                                         args: [("InstanceID", "0")], host: ip)
+            }
+        } else {
+            groupDragBase[id] = nil
+            if let g = groups.first(where: { $0.id == id }) {
+                suppress("v:\(id)", 1.2)
+                for m in g.members { suppress("m:\(m.uuid)", 1.2) }
+            }
+        }
+    }
+
     func setGroupVolume(_ id: String, _ value: Int) {
         guard let i = groups.firstIndex(where: { $0.id == id }) else { return }
         let v = max(0, min(100, value))
+        if groupDragBase[id] == nil { groupEditing(id, true) }
         groups[i].volume = v
+        // Mirror the device's snapshot-scaled distribution locally.
+        if let base = groupDragBase[id] {
+            for j in groups[i].members.indices {
+                let uuid = groups[i].members[j].uuid
+                let b = base.members[uuid] ?? v
+                groups[i].members[j].volume = base.group > 0
+                    ? min(100, Int((Double(b) * Double(v) / Double(base.group)).rounded()))
+                    : v
+            }
+        }
         suppress("v:\(id)")
         for m in groups[i].members { suppress("m:\(m.uuid)") }
         let ip = groups[i].coordinator.ip
@@ -39,8 +74,10 @@ extension SonosSystem {
         if editing {
             masterBase = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0.volume) })
             masterStart = masterVolume
+            for g in groups { groupEditing(g.id, true) }
         } else {
             masterBase = nil
+            for g in groups { groupEditing(g.id, false) }
             suppress("master", 1.2)
         }
     }

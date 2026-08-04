@@ -28,6 +28,7 @@ struct GroupCard: View {
                         set: { sonos.setGroupVolume(group.id, Int($0.rounded())) }
                     ),
                     icon: group.muted ? "speaker.slash.fill" : "speaker.fill",
+                    onEditingChanged: { sonos.groupEditing(group.id, $0) },
                     onIconTap: { sonos.toggleMute(group.id) }
                 )
                 if group.members.count > 1 { expandButton }

@@ -14,6 +14,8 @@ struct CapsuleSlider: View {
     @State private var startedOnIcon = false
     @State private var moved = false
     @State private var scrollAccum: CGFloat = 0
+    @State private var inScrollSession = false
+    @State private var scrollEndTask: Task<Void, Never>?
     @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
@@ -71,6 +73,8 @@ struct CapsuleSlider: View {
 
     /// Relative, heavily damped scroll: ~12 points of finger travel per
     /// volume unit, so a swipe nudges the level and can never jump it.
+    /// A burst of scrolling counts as one editing session (ends after
+    /// 0.5s of stillness) so drag-start snapshots happen once per swipe.
     private func handleScroll(_ dx: CGFloat) {
         guard isEnabled else { return }
         scrollAccum += dx
@@ -78,9 +82,18 @@ struct CapsuleSlider: View {
         let steps = Int(scrollAccum / damp)
         guard steps != 0 else { return }
         scrollAccum -= CGFloat(steps) * damp
-        onEditingChanged(true)
+        if !inScrollSession {
+            inScrollSession = true
+            onEditingChanged(true)
+        }
         value = min(100, max(0, value + Double(steps)))
-        onEditingChanged(false)
+        scrollEndTask?.cancel()
+        scrollEndTask = Task {
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled else { return }
+            inScrollSession = false
+            onEditingChanged(false)
+        }
     }
 }
 
