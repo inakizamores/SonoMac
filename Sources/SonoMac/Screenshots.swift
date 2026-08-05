@@ -40,6 +40,11 @@ enum ScreenshotRenderer {
         sys.models["u5"] = "Sonos Arc"
         sys.groups = [living, bedroom, tvRoom]
         sys.masterVolume = 47
+        // Pinned, not inherited: this is restored from UserDefaults, so the
+        // panel shot otherwise rendered differently depending on whether the
+        // developer happened to leave the section open — and offscreen, an
+        // expanded-but-unloaded section draws a spinner that can't render.
+        sys.soundExpanded = false
         return sys
     }
 

@@ -73,14 +73,16 @@ extension SonosSystem {
     func setBass(_ v: Int) {
         writeSound(\.bass, max(-10, min(10, v))) { ip, val in
             _ = try? await SOAP.call(.renderingControl, action: "SetBass",
-                                     args: [("InstanceID", "0"), ("DesiredBass", "\(val)")], host: ip)
+                                     args: [("InstanceID", "0"), ("DesiredBass", "\(val)")],
+                                     host: ip, retry: true)
         }
     }
 
     func setTreble(_ v: Int) {
         writeSound(\.treble, max(-10, min(10, v))) { ip, val in
             _ = try? await SOAP.call(.renderingControl, action: "SetTreble",
-                                     args: [("InstanceID", "0"), ("DesiredTreble", "\(val)")], host: ip)
+                                     args: [("InstanceID", "0"), ("DesiredTreble", "\(val)")],
+                                     host: ip, retry: true)
         }
     }
 
@@ -94,7 +96,8 @@ extension SonosSystem {
         writeSound(\.loudness, on) { ip, val in
             _ = try? await SOAP.call(.renderingControl, action: "SetLoudness",
                                      args: [("InstanceID", "0"), ("Channel", "Master"),
-                                            ("DesiredLoudness", val ? "1" : "0")], host: ip)
+                                            ("DesiredLoudness", val ? "1" : "0")],
+                                     host: ip, retry: true)
         }
     }
 
@@ -156,7 +159,7 @@ extension SonosSystem {
         _ = try? await SOAP.call(.renderingControl, action: "SetEQ",
                                  args: [("InstanceID", "0"), ("EQType", type),
                                         ("DesiredValue", "\(value)")],
-                                 host: ip)
+                                 host: ip, retry: true)
     }
 
     /// Reads everything in one parallel burst.

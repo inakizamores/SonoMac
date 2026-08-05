@@ -27,8 +27,39 @@ extension SonosSystem {
             if let g = groups.first(where: { $0.id == id }) {
                 suppress("v:\(id)", 1.2)
                 for m in g.members { suppress("m:\(m.uuid)", 1.2) }
+                confirm("v:\(id)", ip: g.coordinator.ip) { ip in
+                    _ = try? await SOAP.call(.groupRenderingControl, action: "SetGroupVolume",
+                                             args: [("InstanceID", "0"),
+                                                    ("DesiredVolume", "\(g.volume)")],
+                                             host: ip, retry: true)
+                }
             }
         }
+    }
+
+    /// Per-speaker equivalent of `groupEditing`, for the sliders in an
+    /// expanded room.
+    func memberEditing(_ groupID: String, _ uuid: String, _ editing: Bool) {
+        guard !editing,
+              let g = groups.first(where: { $0.id == groupID }),
+              let m = g.members.first(where: { $0.uuid == uuid }) else { return }
+        suppress("m:\(uuid)", 1.2)
+        confirm("m:\(uuid)", ip: m.ip) { ip in
+            await Self.setPlayerVolume(ip, m.volume, retry: true)
+        }
+    }
+
+    /// Re-send the value a drag ended on, with retries.
+    ///
+    /// Mid-drag writes are deliberately fire-and-forget: each one is
+    /// superseded a moment later, so a dropped packet costs nothing and
+    /// retrying would stall the send chain behind a 3s timeout. The value you
+    /// release on is different — nothing follows it. If that one is dropped
+    /// the speaker sits at a level you never chose while the panel shows the
+    /// one you did, and no poll corrects the speaker.
+    private func confirm(_ key: String, ip: String,
+                         _ send: @escaping @Sendable (String) async -> Void) {
+        queue("confirm:\(key)").enqueue { await send(ip) }
     }
 
     func setGroupVolume(_ id: String, _ value: Int) {

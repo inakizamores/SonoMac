@@ -330,8 +330,12 @@ final class SonosSystem {
             if !suppressed("t:\(u.id)") {
                 g.transportState = u.transportState
                 g.isTVInput = u.isTVInput
+                // Under the same guard as the transport it describes:
+                // otherwise an optimistic "TV Audio" is overwritten by one
+                // stale poll before the speaker catches up, and the label
+                // flickers back to the old track.
+                g.nowPlaying = u.nowPlaying
             }
-            g.nowPlaying = u.nowPlaying
             g.online = u.online
             groups[i] = g
         }
@@ -504,11 +508,12 @@ final class SonosSystem {
         return SOAP.value("CurrentVolume", in: r).flatMap { Int($0) }
     }
 
-    nonisolated static func setPlayerVolume(_ ip: String, _ v: Int) async {
+    nonisolated static func setPlayerVolume(_ ip: String, _ v: Int,
+                                            retry: Bool = false) async {
         _ = try? await SOAP.call(.renderingControl, action: "SetVolume",
                                  args: [("InstanceID", "0"), ("Channel", "Master"),
                                         ("DesiredVolume", "\(v)")],
-                                 host: ip)
+                                 host: ip, retry: retry)
     }
 
     nonisolated static func fetchModel(ip: String) async -> String? {

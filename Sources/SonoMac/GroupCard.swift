@@ -40,6 +40,7 @@ struct GroupCard: View {
                         set: { sonos.setGroupVolume(group.id, Int($0.rounded())) }
                     ),
                     icon: CapsuleSlider.speakerIcon(group.volume, muted: group.muted),
+                    label: group.displayName,
                     onEditingChanged: { sonos.groupEditing(group.id, $0) },
                     onIconTap: { sonos.toggleMute(group.id) }
                 )
@@ -57,7 +58,7 @@ struct GroupCard: View {
         // live-looking card whose controls quietly do nothing.
         .opacity(group.online ? 1 : 0.45)
         .disabled(!group.online)
-        .contextMenu { groupMenu }
+        .conditionalContextMenu(hasGroupMenu) { groupMenu }
         .onChange(of: expanded) { _, isOn in
             sonos.setExpanded(group.key, isOn)
         }
@@ -153,7 +154,9 @@ struct GroupCard: View {
                             get: { Double(member.volume) },
                             set: { sonos.setMemberVolume(group.id, member.uuid, Int($0.rounded())) }
                         ),
-                        height: 16
+                        height: 16,
+                        label: member.name,
+                        onEditingChanged: { sonos.memberEditing(group.id, member.uuid, $0) }
                     )
                     if member.uuid != group.coordinatorUUID {
                         Button { sonos.removeFromGroup(member) } label: {
@@ -186,6 +189,12 @@ struct GroupCard: View {
 
     // MARK: Context menu
 
+    /// Right-clicking a single standalone room used to open an empty popup:
+    /// nothing to group with, and no speakers to separate or level.
+    private var hasGroupMenu: Bool {
+        sonos.groups.count > 1 || group.members.count > 1
+    }
+
     @ViewBuilder
     private var groupMenu: some View {
         let others = sonos.groups.filter { $0.id != group.id }
@@ -200,5 +209,13 @@ struct GroupCard: View {
             Button("Separate Speakers") { sonos.separate(group.id) }
             Button("Even Out Volumes") { sonos.evenOut(group.id) }
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func conditionalContextMenu<M: View>(_ enabled: Bool,
+                                         @ViewBuilder _ menu: () -> M) -> some View {
+        if enabled { self.contextMenu(menuItems: menu) } else { self }
     }
 }

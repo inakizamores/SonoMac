@@ -20,6 +20,8 @@ struct CapsuleSlider: View {
     @Binding var value: Double            // 0...100
     var height: CGFloat = 22
     var icon: String? = nil
+    /// What this bar controls, for VoiceOver — "All Rooms", a room, a speaker.
+    var label: String = "Volume"
     var onEditingChanged: (Bool) -> Void = { _ in }
     var onIconTap: (() -> Void)? = nil
 
@@ -91,6 +93,31 @@ struct CapsuleSlider: View {
             )
         }
         .frame(height: height)
+        // The bar is drawn from shapes and driven by a raw drag gesture, so
+        // without this it is invisible to VoiceOver and unreachable from the
+        // keyboard — there was no way to set volume at all.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(Text("\(Int(value.rounded())) percent"))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: adjust(by: 5)
+            case .decrement: adjust(by: -5)
+            @unknown default: break
+            }
+        }
+        .accessibilityMuteAction(onIconTap)
+    }
+
+    /// Bracketed in an editing session like a short drag, so the same
+    /// snapshot, suppression and confirm-on-release path runs. Setting the
+    /// binding alone would open a drag that never closes.
+    private func adjust(by delta: Double) {
+        let next = min(100, max(0, value + delta))
+        guard next != value else { return }
+        onEditingChanged(true)
+        value = next
+        onEditingChanged(false)
     }
 
     /// Relative, heavily damped scroll: ~12 points of finger travel per
@@ -115,6 +142,20 @@ struct CapsuleSlider: View {
             guard !Task.isCancelled else { return }
             inScrollSession = false
             onEditingChanged(false)
+        }
+    }
+}
+
+private extension View {
+    /// Exposes the glyph's mute tap as a named action, but only on bars that
+    /// actually have one — the per-speaker rows don't, and advertising a dead
+    /// action is worse than advertising none.
+    @ViewBuilder
+    func accessibilityMuteAction(_ action: (() -> Void)?) -> some View {
+        if let action {
+            self.accessibilityAction(named: Text("Toggle Mute"), action)
+        } else {
+            self
         }
     }
 }

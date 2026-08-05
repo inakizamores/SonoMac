@@ -1,7 +1,15 @@
 import SwiftUI
 
+private struct ContentHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct MenuView: View {
     @Environment(SonosSystem.self) private var sonos
+    @State private var contentHeight: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -14,6 +22,7 @@ struct MenuView: View {
                     ),
                     icon: CapsuleSlider.speakerIcon(Int(sonos.masterVolume.rounded()),
                                                     muted: sonos.allMuted),
+                    label: "All Rooms",
                     onEditingChanged: { sonos.masterEditing($0) },
                     onIconTap: { sonos.toggleMuteAll() }
                 )
@@ -25,6 +34,41 @@ struct MenuView: View {
             .padding(.bottom, 12)
             Divider()
                 .padding(.horizontal, 10)
+            scrollArea
+        }
+        .frame(width: 320)
+        .animation(.panel, value: sonos.groups.isEmpty)
+        .onAppear { sonos.menuOpened() }
+        .onDisappear { sonos.menuClosed() }
+    }
+
+    /// Rooms and the Sound section scroll together under one ceiling.
+    /// Previously only the room list was capped, and the Sound section sat
+    /// outside it — a few expanded rooms plus a full home-theater EQ could
+    /// grow the panel taller than the screen.
+    private static let maxScrollHeight: CGFloat = 560
+
+    /// Only wraps in a ScrollView once the content genuinely overflows: a
+    /// ScrollView that is always present costs nothing visually but doesn't
+    /// render offscreen, which breaks README screenshots — hence also the
+    /// `isScreenshotting` opt-out.
+    private var needsScroll: Bool {
+        !isScreenshotting && contentHeight > Self.maxScrollHeight
+    }
+
+    @ViewBuilder
+    private var scrollArea: some View {
+        if needsScroll {
+            ScrollView { panelContent }
+                .frame(height: Self.maxScrollHeight)
+                .scrollBounceBehavior(.basedOnSize)
+        } else {
+            panelContent
+        }
+    }
+
+    private var panelContent: some View {
+        VStack(spacing: 0) {
             content
             if !sonos.groups.isEmpty {
                 Divider()
@@ -32,18 +76,33 @@ struct MenuView: View {
                 SoundSection()
             }
         }
-        .frame(width: 320)
-        .onAppear { sonos.menuOpened() }
-        .onDisappear { sonos.menuClosed() }
+        // Measured either way, so the switch can't oscillate: inside the
+        // ScrollView this still reports the content's own height, which stays
+        // above the ceiling that put it there.
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(key: ContentHeightKey.self,
+                                       value: geo.size.height)
+            }
+        )
+        .onPreferenceChange(ContentHeightKey.self) { contentHeight = $0 }
     }
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 6) {
             Text("Sonos")
                 .font(.system(.body, weight: .semibold))
+            // With rooms already listed, the empty state's spinner never
+            // shows, so Rescan Network looked like it did nothing at all.
+            if sonos.isScanning && !sonos.groups.isEmpty {
+                ProgressView()
+                    .controlSize(.small)
+                    .transition(.opacity)
+            }
             Spacer()
             settingsMenu
         }
+        .animation(.panel, value: sonos.isScanning)
     }
 
     @Environment(\.isScreenshotting) private var isScreenshotting
@@ -92,6 +151,7 @@ struct MenuView: View {
             Button("Rescan Network") { sonos.rescan() }
             Divider()
             Button("Quit SonoMac") { sonos.quit() }
+                .keyboardShortcut("q")
         } label: {
             Image(systemName: "ellipsis.circle")
                 .foregroundStyle(.secondary)
@@ -108,11 +168,6 @@ struct MenuView: View {
             emptyState
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 22)
-        } else if sonos.groups.count > 4 {
-            ScrollView {
-                groupList
-            }
-            .frame(maxHeight: 440)
         } else {
             groupList
         }
