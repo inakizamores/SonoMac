@@ -31,10 +31,14 @@ struct CapsuleSlider: View {
                     .frame(width: fillWidth)
                     .shadow(color: .black.opacity(0.12), radius: 1, y: 0.5)
                 if let icon {
+                    // Pinned to a fixed leading inset rather than centred: the
+                    // wave variants are wider than the bare speaker, and
+                    // centring them would slide the cone left as volume rises.
                     Image(systemName: icon)
                         .font(.system(size: height * 0.5, weight: .medium))
                         .foregroundStyle(.black)
-                        .frame(width: height, height: height)
+                        .frame(width: height, height: height, alignment: .leading)
+                        .offset(x: height * 0.23)
                 }
             }
             .contentShape(Rectangle())
@@ -93,6 +97,20 @@ struct CapsuleSlider: View {
             guard !Task.isCancelled else { return }
             inScrollSession = false
             onEditingChanged(false)
+        }
+    }
+}
+
+extension CapsuleSlider {
+    /// Control-Center-style speaker glyph for a level: a bare speaker at
+    /// silence, waves filling in as the level climbs.
+    static func speakerIcon(_ volume: Int, muted: Bool = false) -> String {
+        if muted { return "speaker.slash.fill" }
+        switch volume {
+        case ..<1:  return "speaker.fill"
+        case ..<34: return "speaker.wave.1.fill"
+        case ..<67: return "speaker.wave.2.fill"
+        default:    return "speaker.wave.3.fill"
         }
     }
 }

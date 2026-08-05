@@ -36,11 +36,39 @@ enum SOAP {
         return URLSession(configuration: cfg)
     }()
 
+    /// `retry` is for commands, not reads. A busy speaker drops the odd
+    /// connection, and a silently swallowed command is what leaves the panel
+    /// describing a state the system never actually reached. Reads stay
+    /// single-shot on purpose: retrying them would double every poll's
+    /// latency against a speaker that is simply gone.
     @discardableResult
     static func call(_ service: SonosService,
                      action: String,
                      args: [(String, String)] = [],
-                     host ip: String) async throws -> String {
+                     host ip: String,
+                     retry: Bool = false) async throws -> String {
+        do {
+            return try await send(service, action: action, args: args, host: ip)
+        } catch let error as URLError where retry && isTransient(error) {
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            return try await send(service, action: action, args: args, host: ip)
+        }
+    }
+
+    private static func isTransient(_ error: URLError) -> Bool {
+        switch error.code {
+        case .timedOut, .cannotConnectToHost, .networkConnectionLost,
+             .cannotFindHost, .notConnectedToInternet, .resourceUnavailable:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func send(_ service: SonosService,
+                             action: String,
+                             args: [(String, String)],
+                             host ip: String) async throws -> String {
         var body = ""
         for (k, v) in args { body += "<\(k)>\(xmlEscape(v))</\(k)>" }
         let envelope = "<?xml version=\"1.0\" encoding=\"utf-8\"?>"

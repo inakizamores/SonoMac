@@ -19,8 +19,18 @@ struct SonosSpeaker: Identifiable, Hashable, Sendable, Codable {
     let ip: String
     var volume: Int = 0
     var muted: Bool = false
+    /// A Sub bonded to this room, per the topology's channel map. Deliberately
+    /// outside CodingKeys: bonding can change while the panel is closed, so
+    /// this is re-read from the speakers rather than restored from cache.
+    var hasSub: Bool = false
+    /// Rear surrounds bonded to this room, same source and same reasoning.
+    var hasSurrounds: Bool = false
 
     var id: String { uuid }
+
+    private enum CodingKeys: String, CodingKey {
+        case uuid, name, ip, volume, muted
+    }
 }
 
 struct SonosGroup: Identifiable, Hashable, Sendable, Codable {
@@ -32,6 +42,24 @@ struct SonosGroup: Identifiable, Hashable, Sendable, Codable {
     var transportState: TransportState = .stopped
     var nowPlaying: String = ""
     var isTVInput: Bool = false
+    /// Whether the coordinator answered the last poll. Not persisted — a
+    /// restored "unreachable" would be a claim about a system we haven't
+    /// spoken to yet.
+    var online: Bool = true
+
+    private enum CodingKeys: String, CodingKey {
+        case id, coordinatorUUID, members, volume, muted
+        case transportState, nowPlaying, isTVInput
+    }
+
+    /// Identity that survives Sonos renumbering group IDs, which it does on
+    /// every grouping change. Views keyed on `id` were torn down and rebuilt
+    /// each time a group was confirmed, losing expansion state and flashing;
+    /// keyed on this, an optimistic group and its confirmed self are the
+    /// same row.
+    var key: String {
+        members.map(\.uuid).sorted().joined(separator: ",")
+    }
 
     var coordinator: SonosSpeaker {
         members.first(where: { $0.uuid == coordinatorUUID }) ?? members[0]

@@ -12,7 +12,8 @@ struct MenuView: View {
                         get: { sonos.masterVolume },
                         set: { sonos.setMasterVolume($0) }
                     ),
-                    icon: sonos.allMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                    icon: CapsuleSlider.speakerIcon(Int(sonos.masterVolume.rounded()),
+                                                    muted: sonos.allMuted),
                     onEditingChanged: { sonos.masterEditing($0) },
                     onIconTap: { sonos.toggleMuteAll() }
                 )
@@ -25,6 +26,11 @@ struct MenuView: View {
             Divider()
                 .padding(.horizontal, 10)
             content
+            if !sonos.groups.isEmpty {
+                Divider()
+                    .padding(.horizontal, 10)
+                SoundSection()
+            }
         }
         .frame(width: 320)
         .onAppear { sonos.menuOpened() }
@@ -42,9 +48,29 @@ struct MenuView: View {
 
     private var settingsMenu: some View {
         Menu {
-            if sonos.groups.count > 1 {
+            // Two independent conditions. Rooms can be combined when there is
+            // more than one group; they can be pulled apart when any group
+            // holds more than one speaker. Sharing a single `groups.count > 1`
+            // guard got both cases backwards — it offered "Separate All Rooms"
+            // to an already-separate system, then hid it as soon as anything
+            // was grouped, since grouping *reduces* the group count.
+            let canGroup = sonos.groups.count > 1
+            let canSeparate = sonos.groups.contains { $0.members.count > 1 }
+            // Shown for any multi-speaker system rather than only when levels
+            // actually differ: we can't tell a collapsed room is uneven
+            // without polling its players, and hiding the item when it's
+            // needed would be the worse failure.
+            let canEvenOut = sonos.groups.reduce(0) { $0 + $1.members.count } > 1
+            if canGroup {
                 Button("Group All Rooms") { sonos.groupAll() }
+            }
+            if canSeparate {
                 Button("Separate All Rooms") { sonos.separateAll() }
+            }
+            if canEvenOut {
+                Button("Even Out All Volumes") { sonos.evenOutAll() }
+            }
+            if canGroup || canSeparate || canEvenOut {
                 Divider()
             }
             Toggle("Start at Login", isOn: Binding(
@@ -82,7 +108,10 @@ struct MenuView: View {
 
     private var groupList: some View {
         VStack(spacing: 0) {
-            ForEach(sonos.groups) { group in
+            // Keyed on the stable arrangement, not the group ID Sonos
+            // renumbers, so a confirmed regroup reuses the row it drew
+            // optimistically instead of tearing it down and rebuilding it.
+            ForEach(sonos.groups, id: \.key) { group in
                 GroupCard(group: group)
                 if group.id != sonos.groups.last?.id {
                     Divider().padding(.horizontal, 10)

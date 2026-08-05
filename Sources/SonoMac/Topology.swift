@@ -31,7 +31,15 @@ final class TopologyParser: NSObject, XMLParserDelegate {
                   let host = URLComponents(string: location)?.host,
                   let name = attr["ZoneName"], !name.isEmpty
             else { return }
-            currentMembers.append(SonosSpeaker(uuid: uuid, name: name, ip: host))
+            // Bonded satellites are listed by channel, e.g.
+            // "RINCON_a:LF,RF;RINCON_b:SW;RINCON_c:LR;RINCON_d:RR" — ":SW" is
+            // a Sub, ":LR"/":RR" the rear surrounds.
+            let satellites = attr["HTSatChanMapSet"] ?? ""
+            currentMembers.append(
+                SonosSpeaker(uuid: uuid, name: name, ip: host,
+                             hasSub: satellites.contains(":SW"),
+                             hasSurrounds: satellites.contains(":LR")
+                                 || satellites.contains(":RR")))
         default:
             break
         }

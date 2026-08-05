@@ -6,7 +6,7 @@
 
 **Sonos control that feels built into macOS.**
 
-A tiny native menu bar app for your Sonos system — volume, grouping, playback and TV audio, styled like Control Center. No cloud, no account, no Electron. One 740 KB binary.
+A tiny native menu bar app for your Sonos system — volume, grouping, playback, sound settings and TV audio, styled like Control Center. No cloud, no account, no Electron. One 1.3 MB binary.
 
 [![Latest release](https://img.shields.io/github/v/release/inakizamores/SonoMac?label=Download&color=blue)](https://github.com/inakizamores/SonoMac/releases/latest)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black)](#requirements)
@@ -34,10 +34,11 @@ When macOS asks for **Local Network** access, click **Allow** — that's how Son
 
 ## Features
 
-- 🎚️ **Master volume** — one slider moves every room proportionally; click the speaker glyph to mute everything
+- 🎚️ **Master volume** — one slider moves every room together; click the speaker glyph to mute everything
 - 🔊 **Per-room & per-speaker volume** — Control-Center-style capsule sliders, mute on the glyph
 - 🖱️ **Swipe to adjust** — scroll horizontally on any volume bar for smooth, damped changes that can't accidentally jump the level
-- ⚖️ **Even Out Volumes** — one click sets every speaker in a group to the group average (70/60/50 → 60/60/60)
+- 🎛️ **Sound settings** — per-room bass, treble and loudness; Sub level; surround TV and music levels with Ambient/Full playback; Night Sound and Speech Enhancement. Each control appears only on rooms whose hardware actually has it
+- ⚖️ **Even Out Volumes** — one click sets every speaker in a group to the group average (70/60/50 → 60/60/60), or levels the whole system at once
 - ⏯️ **Playback** — play, pause, previous, next, with a now-playing line per room
 - 📺 **TV Audio** — switch home-theater speakers (Arc, Beam, Ray, Playbar/Playbase, Amp) to TV input and back
 - 🔗 **Grouping** — right-click a room to *Group With…* another, separate speakers, or group/separate all rooms at once
@@ -48,7 +49,7 @@ When macOS asks for **Local Network** access, click **Allow** — that's how Son
 SonoMac is built to disappear into macOS:
 
 - **Native everywhere** — SwiftUI `MenuBarExtra`, system panel chrome, SF Symbols, system materials and semantic colors. Dark mode, accent colors and accessibility settings just work.
-- **Light for real** — single arm64 binary, ~740 KB on disk, idle at 0% CPU. It polls speakers only while the panel is open; closed, it does nothing at all.
+- **Light for real** — single arm64 binary, ~1.3 MB on disk, idle at 0% CPU. It polls speakers only while the panel is open; closed, it does nothing at all.
 - **Local only** — talks directly to your speakers over your LAN using the same UPnP API the Sonos app uses (`AVTransport`, `RenderingControl`, `GroupRenderingControl`, `ZoneGroupTopology`). Nothing ever leaves your network. No analytics, no accounts, no telemetry.
 - **Instant** — last-known speaker addresses are cached, so reconnecting is immediate; multicast discovery is the fallback.
 
