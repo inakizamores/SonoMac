@@ -1,4 +1,4 @@
-## SonoMac 1.2 — V1 complete
+## SonoMac 1.3 — V1 complete
 
 The polished, complete V1 of SonoMac: native Sonos control living in your menu bar.
 

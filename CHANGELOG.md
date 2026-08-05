@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 — V1 complete
+## 1.3.0 — V1 complete
 - Real UI screenshots, fully rewritten documentation, polished release notes
 - Screenshot rendering mode (`--render-screenshots`) producing the README images from the actual SwiftUI views
 
