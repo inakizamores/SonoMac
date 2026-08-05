@@ -41,4 +41,4 @@ jobs:
           files: |
             dist/SonoMac.dmg
             dist/SonoMac.zip
-          generate_release_notes: true
+          body_path: RELEASE_NOTES.md

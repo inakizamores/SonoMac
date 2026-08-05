@@ -3,7 +3,12 @@ import SwiftUI
 struct GroupCard: View {
     @Environment(SonosSystem.self) private var sonos
     let group: SonosGroup
-    @State private var expanded = false
+    @State private var expanded: Bool
+
+    init(group: SonosGroup, initiallyExpanded: Bool = false) {
+        self.group = group
+        _expanded = State(initialValue: initiallyExpanded)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

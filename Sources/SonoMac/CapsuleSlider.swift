@@ -1,5 +1,18 @@
 import SwiftUI
 
+/// Set while rendering README screenshots — AppKit-backed views
+/// (scroll catchers, menus) can't render offscreen.
+private struct ScreenshotModeKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var isScreenshotting: Bool {
+        get { self[ScreenshotModeKey.self] }
+        set { self[ScreenshotModeKey.self] = newValue }
+    }
+}
+
 /// Control-Center-style volume slider: capsule track, white fill,
 /// glyph riding inside the leading cap. Tap the glyph to mute,
 /// drag or click anywhere to set the level.
@@ -17,6 +30,7 @@ struct CapsuleSlider: View {
     @State private var inScrollSession = false
     @State private var scrollEndTask: Task<Void, Never>?
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.isScreenshotting) private var isScreenshotting
 
     var body: some View {
         GeometryReader { geo in
@@ -45,7 +59,11 @@ struct CapsuleSlider: View {
             // Scroll steps and receiver pushes glide to the new level;
             // finger drags track 1:1 with no animation lag.
             .animation(isDragging ? nil : .smooth(duration: 0.25), value: value)
-            .background(ScrollCatcher { dx in handleScroll(dx) })
+            .background {
+                if !isScreenshotting {
+                    ScrollCatcher { dx in handleScroll(dx) }
+                }
+            }
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { g in

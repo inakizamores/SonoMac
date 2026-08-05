@@ -46,7 +46,19 @@ struct MenuView: View {
         }
     }
 
+    @Environment(\.isScreenshotting) private var isScreenshotting
+
+    @ViewBuilder
     private var settingsMenu: some View {
+        if isScreenshotting {
+            Image(systemName: "ellipsis.circle")
+                .foregroundStyle(.secondary)
+        } else {
+            realSettingsMenu
+        }
+    }
+
+    private var realSettingsMenu: some View {
         Menu {
             // Two independent conditions. Rooms can be combined when there is
             // more than one group; they can be pulled apart when any group
