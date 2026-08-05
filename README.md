@@ -21,6 +21,8 @@ One sub-megabyte binary that talks to your speakers directly.
 
 <img src="docs/screenshot-panel.png" width="380" alt="SonoMac panel: master volume, rooms with playback controls and volume bars">&nbsp;<img src="docs/screenshot-speakers.png" width="380" alt="Expanded group with per-speaker volume bars and the Even Out Volumes button">
 
+<img src="docs/screenshot-sound.png" width="380" alt="Sound settings for a home-theater room: bass, treble, loudness, subwoofer level, surround TV/Music levels, Ambient/Full playback, Night Sound and Speech Enhancement">
+
 </div>
 
 ---

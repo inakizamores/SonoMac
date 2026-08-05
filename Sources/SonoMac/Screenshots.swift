@@ -51,6 +51,32 @@ enum ScreenshotRenderer {
             .frame(width: 320)
             .padding(.vertical, 4)
         render(expanded, name: "screenshot-speakers", dir: dir)
+
+        // Full EQ for a home-theater room with sub and surrounds.
+        let sound = sampleSystem()
+        sound.soundExpanded = true
+        sound.soundRoom = "u5"
+        var settings = SoundSettings()
+        settings.bass = 2
+        settings.treble = -1
+        settings.loudness = true
+        settings.hasSub = true
+        settings.subEnabled = true
+        settings.subGain = 4
+        settings.hasSurrounds = true
+        settings.surroundEnabled = true
+        settings.surroundLevel = 1
+        settings.musicSurroundLevel = -2
+        settings.musicFull = false
+        settings.isHomeTheater = true
+        settings.nightMode = false
+        settings.dialogLevel = true
+        sound.sound = settings
+        let soundView = SoundSection()
+            .environment(sound)
+            .frame(width: 320)
+            .padding(.vertical, 4)
+        render(soundView, name: "screenshot-sound", dir: dir)
     }
 
     private static func render<V: View>(_ view: V, name: String, dir: String) {

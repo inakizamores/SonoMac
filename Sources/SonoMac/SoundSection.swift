@@ -5,6 +5,7 @@ import SwiftUI
 /// instead of following the group list above it.
 struct SoundSection: View {
     @Environment(SonosSystem.self) private var sonos
+    @Environment(\.isScreenshotting) private var isScreenshotting
 
     /// Shared column widths, so labels, sliders and readouts line up straight
     /// down the panel no matter which section a row belongs to.
@@ -67,7 +68,22 @@ struct SoundSection: View {
         }
     }
 
+    @ViewBuilder
     private var roomPicker: some View {
+        if isScreenshotting {
+            HStack(spacing: 4) {
+                Text(sonos.currentSoundRoom?.name ?? "—")
+                    .font(.subheadline)
+                Image(systemName: "chevron.up.chevron.down")
+                    .imageScale(.small)
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            realRoomPicker
+        }
+    }
+
+    private var realRoomPicker: some View {
         Menu {
             ForEach(sonos.soundRooms) { room in
                 Button(room.name) { sonos.selectSoundRoom(room.uuid) }
@@ -164,10 +180,14 @@ struct SoundSection: View {
                     .foregroundStyle(.tertiary)
                 Spacer(minLength: 8)
                 if let isOn, let set {
-                    Toggle("", isOn: Binding(get: { isOn }, set: set))
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.mini)
+                    if isScreenshotting {
+                        fakeSwitch(isOn)
+                    } else {
+                        Toggle("", isOn: Binding(get: { isOn }, set: set))
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                    }
                 }
             }
             content()
@@ -187,10 +207,15 @@ struct SoundSection: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .frame(width: labelWidth, alignment: .leading)
-            Slider(value: Binding(get: { Double(value) },
-                                  set: { set(Int($0.rounded())) }),
-                   in: Double(range.lowerBound)...Double(range.upperBound))
-                .controlSize(.small)
+            if isScreenshotting {
+                fakeSlider(fraction: CGFloat(value - range.lowerBound)
+                           / CGFloat(range.upperBound - range.lowerBound))
+            } else {
+                Slider(value: Binding(get: { Double(value) },
+                                      set: { set(Int($0.rounded())) }),
+                       in: Double(range.lowerBound)...Double(range.upperBound))
+                    .controlSize(.small)
+            }
             Text(value > 0 ? "+\(value)" : "\(value)")
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.tertiary)
@@ -208,14 +233,18 @@ struct SoundSection: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .frame(width: labelWidth, alignment: .leading)
-            Picker("", selection: Binding(get: { s.musicFull },
-                                          set: { sonos.setMusicFull($0) })) {
-                Text("Ambient").tag(false)
-                Text("Full").tag(true)
+            if isScreenshotting {
+                fakeSegmented(["Ambient", "Full"], selected: s.musicFull ? 1 : 0)
+            } else {
+                Picker("", selection: Binding(get: { s.musicFull },
+                                              set: { sonos.setMusicFull($0) })) {
+                    Text("Ambient").tag(false)
+                    Text("Full").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .controlSize(.small)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .controlSize(.small)
             Color.clear.frame(width: valueWidth, height: 1)
         }
     }
@@ -228,10 +257,70 @@ struct SoundSection: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             Spacer(minLength: 8)
-            Toggle("", isOn: Binding(get: { isOn }, set: set))
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+            if isScreenshotting {
+                fakeSwitch(isOn)
+            } else {
+                Toggle("", isOn: Binding(get: { isOn }, set: set))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+            }
         }
+    }
+
+    // MARK: Screenshot stand-ins (AppKit controls can't render offscreen)
+
+    private func fakeSlider(fraction: CGFloat) -> some View {
+        GeometryReader { geo in
+            let knob: CGFloat = 14
+            let x = fraction * (geo.size.width - knob)
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(.quaternary)
+                    .frame(height: 4)
+                Capsule()
+                    .fill(Color.accentColor)
+                    .frame(width: x + knob / 2, height: 4)
+                Circle()
+                    .fill(.white)
+                    .frame(width: knob, height: knob)
+                    .shadow(color: .black.opacity(0.35), radius: 1.5, y: 0.5)
+                    .offset(x: x)
+            }
+            .frame(height: geo.size.height)
+        }
+        .frame(height: 16)
+    }
+
+    private func fakeSwitch(_ isOn: Bool) -> some View {
+        ZStack(alignment: isOn ? .trailing : .leading) {
+            Capsule()
+                .fill(isOn ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.quaternary))
+                .frame(width: 26, height: 15)
+            Circle()
+                .fill(.white)
+                .frame(width: 13, height: 13)
+                .padding(.horizontal, 1)
+                .shadow(color: .black.opacity(0.3), radius: 1)
+        }
+    }
+
+    private func fakeSegmented(_ options: [String], selected: Int) -> some View {
+        HStack(spacing: 2) {
+            ForEach(Array(options.enumerated()), id: \.offset) { i, label in
+                Text(label)
+                    .font(.caption)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 3)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .fill(i == selected ? AnyShapeStyle(Color(white: 0.42))
+                                                : AnyShapeStyle(.clear))
+                    )
+            }
+        }
+        .padding(2)
+        .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(.quaternary))
     }
 }
