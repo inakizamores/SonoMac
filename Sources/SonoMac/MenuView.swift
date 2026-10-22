@@ -38,6 +38,7 @@ struct MenuView: View {
         }
         .frame(width: 320)
         .animation(.panel, value: sonos.groups.isEmpty)
+        .modifier(PanelSizer())
         .onAppear { sonos.menuOpened() }
         .onDisappear { sonos.menuClosed() }
     }

@@ -11,6 +11,8 @@ struct SoundSection: View {
     /// down the panel no matter which section a row belongs to.
     private let labelWidth: CGFloat = 74
     private let valueWidth: CGFloat = 24
+    /// The controls are fading out before the section closes.
+    @State private var closing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -23,6 +25,7 @@ struct SoundSection: View {
                         loading
                     }
                 }
+                .opacity(closing ? 0 : 1)
                 .transition(.panelRow)
             }
         }
@@ -42,10 +45,27 @@ struct SoundSection: View {
 
     // MARK: Header
 
+    /// Opening grows the panel and then fades the controls in; closing
+    /// fades them out and then shrinks it.
+    private func toggleExpanded() {
+        guard sonos.soundExpanded else {
+            closing = false
+            sonos.setSoundExpanded(true)
+            return
+        }
+        guard !closing else { return }
+        withAnimation(.easeIn(duration: 0.09)) { closing = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.09) {
+            guard closing else { return }
+            sonos.setSoundExpanded(false)
+            closing = false
+        }
+    }
+
     private var header: some View {
         HStack(spacing: 8) {
             Button {
-                sonos.setSoundExpanded(!sonos.soundExpanded)
+                toggleExpanded()
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.down")

@@ -4,6 +4,8 @@ struct GroupCard: View {
     @Environment(SonosSystem.self) private var sonos
     let group: SonosGroup
     @State private var expanded: Bool
+    /// The speaker rows are fading out before the card closes.
+    @State private var closing = false
 
     init(group: SonosGroup, initiallyExpanded: Bool = false) {
         self.group = group
@@ -48,6 +50,7 @@ struct GroupCard: View {
             }
             if expanded && group.members.count > 1 {
                 memberList
+                    .opacity(closing ? 0 : 1)
                     .transition(.panelRow)
             }
         }
@@ -123,9 +126,27 @@ struct GroupCard: View {
         .help(help)
     }
 
+    /// Opening grows the panel and then fades the rows in; closing fades
+    /// them out and then shrinks it, so nothing is drawn while the edge
+    /// passes over it.
+    private func toggleExpanded() {
+        guard expanded else {
+            closing = false
+            withAnimation(.panel) { expanded = true }
+            return
+        }
+        guard !closing else { return }
+        withAnimation(.easeIn(duration: 0.09)) { closing = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.09) {
+            guard closing else { return }
+            withAnimation(.panel) { expanded = false }
+            closing = false
+        }
+    }
+
     private var expandButton: some View {
         Button {
-            withAnimation(.panel) { expanded.toggle() }
+            toggleExpanded()
         } label: {
             Image(systemName: "chevron.down")
                 .imageScale(.small)

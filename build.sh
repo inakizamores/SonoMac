@@ -9,6 +9,11 @@ APP="build/SonoMac.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/SonoMac "$APP/Contents/MacOS/SonoMac"
+# Newer SwiftPM links with the deployment target recorded as the SDK
+# version, and macOS then draws the menu bar panel in its old compatibility
+# style. Record the real SDK so the panel gets the current system look.
+vtool -set-build-version macos 14.0 "$(xcrun --show-sdk-version)" -replace \
+    -output "$APP/Contents/MacOS/SonoMac" "$APP/Contents/MacOS/SonoMac"
 cp Support/Info.plist "$APP/Contents/Info.plist"
 cp Support/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
