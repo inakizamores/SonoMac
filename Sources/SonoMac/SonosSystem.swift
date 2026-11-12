@@ -501,7 +501,7 @@ final class SonosSystem {
         }
         if g.isTVInput {
             g.nowPlaying = "TV Audio"
-            g.audioFormat = formats ? await tvFormat(uri: tvURI, in: g) ?? "" : ""
+            g.audioFormat = formats ? await tvFormat(uri: tvURI, in: g) : nil
         } else if let r = try? await posR,
                   let meta = SOAP.value("TrackMetaData", in: r),
                   meta != "NOT_IMPLEMENTED", !meta.isEmpty {
@@ -509,11 +509,11 @@ final class SonosSystem {
             let title = SOAP.value("dc:title", in: didl).map(SOAP.xmlUnescape) ?? ""
             let artist = SOAP.value("dc:creator", in: didl).map(SOAP.xmlUnescape) ?? ""
             g.nowPlaying = artist.isEmpty ? title : "\(title) — \(artist)"
-            g.audioFormat = !formats || g.transportState == .stopped ? ""
-                : await LocalAPI.trackFormat(group: g.id, ip: ip) ?? ""
+            g.audioFormat = !formats || g.transportState == .stopped ? nil
+                : await LocalAPI.trackFormat(group: g.id, ip: ip)
         } else {
             g.nowPlaying = ""
-            g.audioFormat = ""
+            g.audioFormat = nil
         }
         _ = try? await posR
         return g
@@ -522,13 +522,13 @@ final class SonosSystem {
     /// The incoming TV format, read from the soundbar the stream comes
     /// from. That's named in the URI (`x-sonos-htastream:RINCON_…:spdif`),
     /// so a group led by another speaker still asks the right one.
-    nonisolated static func tvFormat(uri: String?, in g: SonosGroup) async -> String? {
+    nonisolated static func tvFormat(uri: String?, in g: SonosGroup) async -> AudioFormat? {
         let source = uri?.split(separator: ":").dropFirst().first.map(String.init)
         let ip = g.members.first(where: { $0.uuid == source })?.ip ?? g.coordinator.ip
         guard let r = try? await SOAP.call(.deviceProperties, action: "GetZoneInfo", host: ip),
               let code = SOAP.value("HTAudioIn", in: r).flatMap({ Int($0) })
         else { return nil }
-        return TVAudioFormat.label(code)
+        return TVAudioFormat.format(code)
     }
 
     nonisolated static func playerVolume(_ ip: String) async -> Int? {

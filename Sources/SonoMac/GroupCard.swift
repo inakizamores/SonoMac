@@ -31,12 +31,19 @@ struct GroupCard: View {
                             .lineLimit(1)
                             .transition(.panelRow)
                     }
-                    if showFormat {
-                        Text(group.audioFormat)
-                            .font(.subheadline)
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(1)
-                            .transition(.panelRow)
+                    if showFormat, let format = group.audioFormat {
+                        HStack(spacing: 4) {
+                            if let symbol = format.symbol {
+                                Image(systemName: symbol)
+                                    .imageScale(.small)
+                                    .accessibilityHidden(true)
+                            }
+                            Text(format.text)
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .transition(.panelRow)
                     }
                 }
                 Spacer(minLength: 8)
@@ -78,7 +85,7 @@ struct GroupCard: View {
     /// Its own row, so the track line keeps the full width.
     private var showFormat: Bool {
         sonos.showAudioFormat && group.online
-            && !group.nowPlaying.isEmpty && !group.audioFormat.isEmpty
+            && !group.nowPlaying.isEmpty && group.audioFormat != nil
     }
 
     /// Rows that come and go on their own — the now-playing line, the TV

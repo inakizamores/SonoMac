@@ -16,9 +16,9 @@ enum LocalAPI {
         return URLSession(configuration: cfg, delegate: SpeakerTrust(), delegateQueue: nil)
     }()
 
-    /// "Lossless 16/44.1", "Hi-Res 24/96", "Dolby Atmos" for the group's
-    /// current track; nil for lossy streams or when the speaker doesn't say.
-    static func trackFormat(group id: String, ip: String) async -> String? {
+    /// "Dolby Atmos", "Hi-Res 24/96", "Lossless 16/44.1" or "Standard" for
+    /// the group's current track; nil when the speaker doesn't say.
+    static func trackFormat(group id: String, ip: String) async -> AudioFormat? {
         let path = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
         guard let url = URL(string: "https://\(ip):1443/api/v1/groups/\(path)/playbackMetadata")
         else { return nil }
@@ -29,7 +29,7 @@ enum LocalAPI {
               let meta = try? JSONDecoder().decode(Metadata.self, from: data),
               let q = meta.currentItem?.track?.quality
         else { return nil }
-        return TrackQuality.label(bitDepth: q.bitDepth, sampleRate: q.sampleRate,
+        return TrackQuality.format(bitDepth: q.bitDepth, sampleRate: q.sampleRate,
                                   lossless: q.lossless, immersive: q.immersive)
     }
 
@@ -70,17 +70,19 @@ private final class SpeakerTrust: NSObject, URLSessionDelegate, @unchecked Senda
 }
 
 enum TrackQuality {
-    static func label(bitDepth: Int?, sampleRate: Int?,
-                      lossless: Bool?, immersive: Bool?) -> String? {
-        if immersive == true { return "Dolby Atmos" }
+    static func format(bitDepth: Int?, sampleRate: Int?,
+                       lossless: Bool?, immersive: Bool?) -> AudioFormat? {
+        if immersive == true { return AudioFormat(text: "Dolby Atmos", kind: .surround) }
+        guard let lossless else { return nil }
         // Lossy streams report nominal 16/44.1 too (Spotify does); quoting
         // those numbers would imply a quality the stream doesn't have.
-        guard lossless == true else { return nil }
+        guard lossless else { return AudioFormat(text: "Standard", kind: .stereo) }
         guard let bits = bitDepth, let rate = sampleRate, bits > 0, rate > 0 else {
-            return "Lossless"
+            return AudioFormat(text: "Lossless", kind: .stereo)
         }
         let hiRes = bits > 16 || rate > 48_000
-        return "\(hiRes ? "Hi-Res" : "Lossless") \(bits)/\(kHz(rate))"
+        return AudioFormat(text: "\(hiRes ? "Hi-Res" : "Lossless") \(bits)/\(kHz(rate))",
+                           kind: .stereo)
     }
 
     /// 44100 → "44.1", 48000 → "48", 96000 → "96".

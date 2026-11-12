@@ -45,7 +45,7 @@ struct SonosGroup: Identifiable, Hashable, Sendable, Codable {
     /// What's coming in: "Dolby Atmos", "Lossless 16/44.1", "Dolby Digital
     /// Plus 5.1". Not persisted — it describes this moment's stream, and a
     /// restored one would vouch for a track that may have long changed.
-    var audioFormat: String = ""
+    var audioFormat: AudioFormat?
     /// Whether the coordinator answered the last poll. Not persisted — a
     /// restored "unreachable" would be a claim about a system we haven't
     /// spoken to yet.
@@ -80,6 +80,23 @@ struct SonosGroup: Identifiable, Hashable, Sendable, Codable {
     }
 }
 
+/// One line of "what's coming in", with the glyph that goes in front of it.
+struct AudioFormat: Hashable, Sendable {
+    enum Kind: Hashable, Sendable { case surround, stereo, silent }
+    let text: String
+    let kind: Kind
+
+    /// Plain system glyphs on purpose: Dolby's marks need a licence, and
+    /// macOS's own spatial-audio symbols are reserved for Apple's feature.
+    var symbol: String? {
+        switch kind {
+        case .surround: return "dot.radiowaves.left.and.right"
+        case .stereo: return "waveform"
+        case .silent: return nil
+        }
+    }
+}
+
 /// What the TV is sending a home-theater speaker, decoded from the
 /// `HTAudioIn` code in DeviceProperties.GetZoneInfo — the same reading the
 /// Sonos app shows under TV audio.
@@ -89,21 +106,23 @@ struct SonosGroup: Identifiable, Hashable, Sendable, Codable {
 /// than matching a table of whole codes means layouts nobody has written down
 /// yet (DTS 7.1, say) still read correctly.
 enum TVAudioFormat {
-    static func label(_ code: Int) -> String? {
+    static func format(_ code: Int) -> AudioFormat? {
         let codec = code & 0xFF
         let main = (code >> 24) & 0xFF
         let lfe = (code >> 20) & 0xF
         let layout = main > 0 ? " \(main).\(lfe)" : ""
+        let kind: AudioFormat.Kind = main > 2 ? .surround : .stereo
         switch codec {
-        case 59, 61, 63: return "Dolby Atmos"   // over DD+, TrueHD, MAT
-        case 18: return "Dolby Digital 5.1"      // older firmware's code
-        case 7, 56, 57: return "Dolby Digital" + layout
-        case 58: return "Dolby Digital Plus" + layout
-        case 60: return "Dolby TrueHD" + layout
-        case 62: return "Dolby Multichannel PCM" + layout
-        case 65: return "DTS" + layout
-        case 2: return main > 2 ? "Multichannel PCM" + layout : "Stereo PCM"
-        case 22: return "No audio"
+        case 59, 61, 63: return AudioFormat(text: "Dolby Atmos", kind: .surround)  // DD+, TrueHD, MAT
+        case 18: return AudioFormat(text: "Dolby Digital 5.1", kind: .surround)    // older firmware
+        case 7, 56, 57: return AudioFormat(text: "Dolby Digital" + layout, kind: kind)
+        case 58: return AudioFormat(text: "Dolby Digital Plus" + layout, kind: kind)
+        case 60: return AudioFormat(text: "Dolby TrueHD" + layout, kind: kind)
+        case 62: return AudioFormat(text: "Dolby Multichannel PCM" + layout, kind: kind)
+        case 65: return AudioFormat(text: "DTS" + layout, kind: kind)
+        case 2: return main > 2 ? AudioFormat(text: "Multichannel PCM" + layout, kind: .surround)
+                                : AudioFormat(text: "Stereo PCM", kind: .stereo)
+        case 22: return AudioFormat(text: "No audio", kind: .silent)
         default: return nil                      // nothing connected / unknown
         }
     }
