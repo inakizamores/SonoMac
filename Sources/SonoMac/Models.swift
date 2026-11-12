@@ -42,6 +42,10 @@ struct SonosGroup: Identifiable, Hashable, Sendable, Codable {
     var transportState: TransportState = .stopped
     var nowPlaying: String = ""
     var isTVInput: Bool = false
+    /// What's coming in: "Dolby Atmos", "Lossless 16/44.1", "Dolby Digital
+    /// Plus 5.1". Not persisted — it describes this moment's stream, and a
+    /// restored one would vouch for a track that may have long changed.
+    var audioFormat: String = ""
     /// Whether the coordinator answered the last poll. Not persisted — a
     /// restored "unreachable" would be a claim about a system we haven't
     /// spoken to yet.
@@ -73,5 +77,34 @@ struct SonosGroup: Identifiable, Hashable, Sendable, Codable {
         let vols = members.map(\.volume)
         guard let lo = vols.min(), let hi = vols.max() else { return 0 }
         return hi - lo
+    }
+}
+
+/// What the TV is sending a home-theater speaker, decoded from the
+/// `HTAudioIn` code in DeviceProperties.GetZoneInfo — the same reading the
+/// Sonos app shows under TV audio.
+///
+/// The code is a bitfield: the top byte is the main channel count, the next
+/// nibble the LFE count, the low byte the codec. Decoding the fields rather
+/// than matching a table of whole codes means layouts nobody has written down
+/// yet (DTS 7.1, say) still read correctly.
+enum TVAudioFormat {
+    static func label(_ code: Int) -> String? {
+        let codec = code & 0xFF
+        let main = (code >> 24) & 0xFF
+        let lfe = (code >> 20) & 0xF
+        let layout = main > 0 ? " \(main).\(lfe)" : ""
+        switch codec {
+        case 59, 61, 63: return "Dolby Atmos"   // over DD+, TrueHD, MAT
+        case 18: return "Dolby Digital 5.1"      // older firmware's code
+        case 7, 56, 57: return "Dolby Digital" + layout
+        case 58: return "Dolby Digital Plus" + layout
+        case 60: return "Dolby TrueHD" + layout
+        case 62: return "Dolby Multichannel PCM" + layout
+        case 65: return "DTS" + layout
+        case 2: return main > 2 ? "Multichannel PCM" + layout : "Stereo PCM"
+        case 22: return "No audio"
+        default: return nil                      // nothing connected / unknown
+        }
     }
 }

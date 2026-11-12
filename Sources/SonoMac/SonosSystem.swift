@@ -72,6 +72,16 @@ final class SonosSystem {
     var soundRoom = UserDefaults.standard.string(forKey: "soundRoom") ?? ""
     var sound: SoundSettings?
 
+    /// The optional third row under each room: Dolby Atmos, Lossless 16/44.1…
+    /// Off by default; while off the formats aren't fetched at all.
+    var showAudioFormat = UserDefaults.standard.bool(forKey: "showAudioFormat")
+
+    func setShowAudioFormat(_ on: Bool) {
+        showAudioFormat = on
+        UserDefaults.standard.set(on, forKey: "showAudioFormat")
+        if on { Task { await refreshState() } }
+    }
+
     var allMuted: Bool { !groups.isEmpty && groups.allSatisfy(\.muted) }
 
     @ObservationIgnored private var pollTask: Task<Void, Never>?
@@ -285,6 +295,7 @@ final class SonosSystem {
                 f.transportState = o.transportState
                 f.nowPlaying = o.nowPlaying
                 f.isTVInput = o.isTVInput
+                f.audioFormat = o.audioFormat
             }
             merged.append(f)
         }
@@ -310,7 +321,8 @@ final class SonosSystem {
         let snapshot = groups
         guard !snapshot.isEmpty else { return }
         let updated = await withTaskGroup(of: SonosGroup.self) { tg in
-            for g in snapshot { tg.addTask { await Self.groupState(g) } }
+            let formats = showAudioFormat
+            for g in snapshot { tg.addTask { await Self.groupState(g, formats: formats) } }
             var out: [SonosGroup] = []
             for await g in tg { out.append(g) }
             return out
@@ -335,6 +347,7 @@ final class SonosSystem {
                 // stale poll before the speaker catches up, and the label
                 // flickers back to the old track.
                 g.nowPlaying = u.nowPlaying
+                g.audioFormat = u.audioFormat
             }
             g.online = u.online
             groups[i] = g
@@ -453,7 +466,7 @@ final class SonosSystem {
         return groups
     }
 
-    nonisolated static func groupState(_ g: SonosGroup) async -> SonosGroup {
+    nonisolated static func groupState(_ g: SonosGroup, formats: Bool) async -> SonosGroup {
         var g = g
         let ip = g.coordinator.ip
         async let volR = SOAP.call(.groupRenderingControl, action: "GetGroupVolume",
@@ -481,11 +494,14 @@ final class SonosSystem {
         if let r = transport, let s = SOAP.value("CurrentTransportState", in: r) {
             g.transportState = TransportState(upnp: s)
         }
+        var tvURI: String?
         if let r = try? await mediaR, let uri = SOAP.value("CurrentURI", in: r) {
             g.isTVInput = uri.hasPrefix("x-sonos-htastream")
+            if g.isTVInput { tvURI = uri }
         }
         if g.isTVInput {
             g.nowPlaying = "TV Audio"
+            g.audioFormat = formats ? await tvFormat(uri: tvURI, in: g) ?? "" : ""
         } else if let r = try? await posR,
                   let meta = SOAP.value("TrackMetaData", in: r),
                   meta != "NOT_IMPLEMENTED", !meta.isEmpty {
@@ -493,11 +509,26 @@ final class SonosSystem {
             let title = SOAP.value("dc:title", in: didl).map(SOAP.xmlUnescape) ?? ""
             let artist = SOAP.value("dc:creator", in: didl).map(SOAP.xmlUnescape) ?? ""
             g.nowPlaying = artist.isEmpty ? title : "\(title) — \(artist)"
+            g.audioFormat = !formats || g.transportState == .stopped ? ""
+                : await LocalAPI.trackFormat(group: g.id, ip: ip) ?? ""
         } else {
             g.nowPlaying = ""
+            g.audioFormat = ""
         }
         _ = try? await posR
         return g
+    }
+
+    /// The incoming TV format, read from the soundbar the stream comes
+    /// from. That's named in the URI (`x-sonos-htastream:RINCON_…:spdif`),
+    /// so a group led by another speaker still asks the right one.
+    nonisolated static func tvFormat(uri: String?, in g: SonosGroup) async -> String? {
+        let source = uri?.split(separator: ":").dropFirst().first.map(String.init)
+        let ip = g.members.first(where: { $0.uuid == source })?.ip ?? g.coordinator.ip
+        guard let r = try? await SOAP.call(.deviceProperties, action: "GetZoneInfo", host: ip),
+              let code = SOAP.value("HTAudioIn", in: r).flatMap({ Int($0) })
+        else { return nil }
+        return TVAudioFormat.label(code)
     }
 
     nonisolated static func playerVolume(_ ip: String) async -> Int? {

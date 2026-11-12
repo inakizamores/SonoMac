@@ -265,6 +265,7 @@ extension SonosSystem {
         let toTV = !groups[i].isTVInput
         groups[i].isTVInput = toTV
         groups[i].nowPlaying = toTV ? "TV Audio" : ""
+        groups[i].audioFormat = ""
         if toTV { groups[i].transportState = .playing }
         suppress("t:\(id)", 3.0)
         queue("cmd:\(id)").enqueue {

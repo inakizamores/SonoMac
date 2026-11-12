@@ -1,7 +1,7 @@
 import Foundation
 
 enum SonosService {
-    case avTransport, renderingControl, groupRenderingControl, zoneGroupTopology
+    case avTransport, renderingControl, groupRenderingControl, zoneGroupTopology, deviceProperties
 
     var path: String {
         switch self {
@@ -9,6 +9,7 @@ enum SonosService {
         case .renderingControl: return "/MediaRenderer/RenderingControl/Control"
         case .groupRenderingControl: return "/MediaRenderer/GroupRenderingControl/Control"
         case .zoneGroupTopology: return "/ZoneGroupTopology/Control"
+        case .deviceProperties: return "/DeviceProperties/Control"
         }
     }
 
@@ -18,6 +19,7 @@ enum SonosService {
         case .renderingControl: return "urn:schemas-upnp-org:service:RenderingControl:1"
         case .groupRenderingControl: return "urn:schemas-upnp-org:service:GroupRenderingControl:1"
         case .zoneGroupTopology: return "urn:schemas-upnp-org:service:ZoneGroupTopology:1"
+        case .deviceProperties: return "urn:schemas-upnp-org:service:DeviceProperties:1"
         }
     }
 }

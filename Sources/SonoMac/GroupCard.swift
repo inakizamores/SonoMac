@@ -31,6 +31,13 @@ struct GroupCard: View {
                             .lineLimit(1)
                             .transition(.panelRow)
                     }
+                    if showFormat {
+                        Text(group.audioFormat)
+                            .font(.subheadline)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                            .transition(.panelRow)
+                    }
                 }
                 Spacer(minLength: 8)
                 controls
@@ -68,12 +75,18 @@ struct GroupCard: View {
         .animation(.panel, value: layoutKey)
     }
 
+    /// Its own row, so the track line keeps the full width.
+    private var showFormat: Bool {
+        sonos.showAudioFormat && group.online
+            && !group.nowPlaying.isEmpty && !group.audioFormat.isEmpty
+    }
+
     /// Rows that come and go on their own — the now-playing line, the TV
     /// button once the model is known, and Even Out once the speakers drift
     /// apart. None of these arrive through a button press, so without this
     /// they resize the panel with no transaction to animate them.
     private var layoutKey: String {
-        "\(group.nowPlaying.isEmpty)\(showEvenOut)\(group.members.count)"
+        "\(group.nowPlaying.isEmpty)\(showFormat)\(showEvenOut)\(group.members.count)"
             + "\(sonos.htCapable(group.coordinatorUUID))\(group.online)"
     }
 

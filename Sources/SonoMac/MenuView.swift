@@ -145,6 +145,10 @@ struct MenuView: View {
             if canGroup || canSeparate || canEvenOut {
                 Divider()
             }
+            Toggle("Show Audio Format", isOn: Binding(
+                get: { sonos.showAudioFormat },
+                set: { sonos.setShowAudioFormat($0) }
+            ))
             Toggle("Start at Login", isOn: Binding(
                 get: { sonos.launchAtLogin },
                 set: { sonos.setLaunchAtLogin($0) }
